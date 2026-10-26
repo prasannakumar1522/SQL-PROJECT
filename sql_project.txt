@@ -1,0 +1,343 @@
+-- =====================================================
+-- EVENT TICKET BOOKING SYSTEM
+-- DATABASE: event_booking_new
+-- MySQL 8.0
+-- =====================================================
+
+CREATE DATABASE IF NOT EXISTS event_booking_new;
+USE event_booking_new;
+
+-- =====================================================
+-- 1. USERS TABLE
+-- Stores registered users and administrators
+-- =====================================================
+
+CREATE TABLE users (
+    user_id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(100) NOT NULL,
+    email VARCHAR(150) NOT NULL UNIQUE,
+    password_hash VARCHAR(255) NOT NULL,
+    phone VARCHAR(15),
+    role ENUM('admin', 'user') NOT NULL DEFAULT 'user',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- =====================================================
+-- 2. EVENTS TABLE
+-- Stores event information
+-- =====================================================
+
+CREATE TABLE events (
+    event_id INT AUTO_INCREMENT PRIMARY KEY,
+    title VARCHAR(150) NOT NULL,
+    category VARCHAR(50) NOT NULL,
+    description TEXT,
+    event_date DATE NOT NULL,
+    event_time TIME NOT NULL,
+    location VARCHAR(200) NOT NULL,
+    image VARCHAR(255),
+    created_by INT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT fk_events_creator
+        FOREIGN KEY (created_by)
+        REFERENCES users(user_id)
+        ON DELETE SET NULL
+);
+
+-- =====================================================
+-- 3. TICKETS TABLE
+-- Stores ticket types, prices and availability
+-- =====================================================
+
+CREATE TABLE tickets (
+    ticket_id INT AUTO_INCREMENT PRIMARY KEY,
+    event_id INT NOT NULL,
+    ticket_type VARCHAR(50) NOT NULL,
+    price DECIMAL(10,2) NOT NULL,
+    available_quantity INT NOT NULL DEFAULT 0,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT chk_ticket_price
+        CHECK (price >= 0),
+
+    CONSTRAINT chk_ticket_quantity
+        CHECK (available_quantity >= 0),
+
+    CONSTRAINT fk_tickets_event
+        FOREIGN KEY (event_id)
+        REFERENCES events(event_id)
+        ON DELETE CASCADE,
+
+    CONSTRAINT uq_event_ticket_type
+        UNIQUE (event_id, ticket_type),
+
+    CONSTRAINT uq_event_ticket_id
+        UNIQUE (event_id, ticket_id)
+);
+
+-- =====================================================
+-- 4. BOOKINGS TABLE
+-- Stores bookings made by users
+-- =====================================================
+
+CREATE TABLE bookings (
+    booking_id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    event_id INT NOT NULL,
+    ticket_id INT NOT NULL,
+    quantity INT NOT NULL,
+    total_amount DECIMAL(10,2) NOT NULL,
+    booking_status ENUM(
+        'confirmed',
+        'cancelled'
+    ) NOT NULL DEFAULT 'confirmed',
+    booking_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT chk_booking_quantity
+        CHECK (quantity > 0),
+
+    CONSTRAINT chk_booking_amount
+        CHECK (total_amount >= 0),
+
+    CONSTRAINT fk_bookings_user
+        FOREIGN KEY (user_id)
+        REFERENCES users(user_id),
+
+    CONSTRAINT fk_bookings_event
+        FOREIGN KEY (event_id)
+        REFERENCES events(event_id),
+
+    CONSTRAINT fk_bookings_ticket_event
+        FOREIGN KEY (event_id, ticket_id)
+        REFERENCES tickets(event_id, ticket_id)
+);
+
+-- =====================================================
+-- 5. SAMPLE USERS
+-- Password values below are placeholders, not login-ready
+-- password hashes. Replace with securely generated hashes.
+-- =====================================================
+INSERT INTO users
+(name, email, password_hash, phone, role)
+VALUES
+('Rahul Sharma', 'rahul@gmail.com', 'hash123', '9876543210', 'user'),
+('Priya Verma', 'priya@gmail.com', 'hash456', '9876543211', 'user'),
+('Amit Patel', 'amit@gmail.com', 'hash789', '9876543212', 'user'),
+('Sneha Reddy', 'sneha@gmail.com', 'hash101', '9876543213', 'user'),
+('Admin User', 'admin@gmail.com', 'adminhash', '9999999999', 'admin');
+
+-- =====================================================
+-- 6. SAMPLE EVENTS
+-- =====================================================
+
+INSERT INTO events
+(title, category, description, event_date, event_time,
+ location, image, created_by)
+VALUES
+('Rock Music Concert',
+ 'Music',
+ 'Live music concert featuring famous bands',
+ '2026-01-15',
+ '18:00:00',
+ 'Mumbai Stadium',
+ 'concert.jpg',
+ 5),
+
+('Tech Summit 2026',
+ 'Technology',
+ 'Annual technology conference',
+ '2026-02-20',
+ '10:00:00',
+ 'Bangalore Convention Center',
+ 'tech.jpg',
+ 5),
+
+('Comedy Night',
+ 'Entertainment',
+ 'Stand-up comedy show',
+ '2026-03-10',
+ '20:00:00',
+ 'Hyderabad Auditorium',
+ 'comedy.jpg',
+ 5),
+
+('Food Festival',
+ 'Festival',
+ 'International food and cultural event',
+ '2026-04-05',
+ '11:00:00',
+ 'Delhi Expo Ground',
+ 'foodfest.jpg',
+ 5);
+
+
+-- =====================================================
+-- 7. SAMPLE TICKETS
+-- =====================================================
+
+INSERT INTO tickets
+(event_id, ticket_type, price, available_quantity)
+VALUES
+(1, 'VIP', 5000.00, 100),
+(1, 'Regular', 2000.00, 400),
+
+(2, 'Premium', 3500.00, 150),
+(2, 'Regular', 1500.00, 300),
+
+(3, 'VIP', 2500.00, 50),
+(3, 'Regular', 1000.00, 200),
+
+(4, 'Entry Pass', 500.00, 1000);
+
+-- =====================================================
+-- 8. SAMPLE BOOKINGS
+-- Total amount = ticket price * quantity
+-- =====================================================
+
+INSERT INTO bookings
+(user_id, event_id, ticket_id, quantity,
+ total_amount, booking_status)
+VALUES
+
+(1, 1, 1, 2,
+ 10000.00, 'confirmed'),
+
+(2, 1, 2, 3,
+ 6000.00, 'confirmed'),
+
+(3, 2, 3, 1,
+ 3500.00, 'confirmed'),
+
+(4, 3, 6, 2,
+ 2000.00, 'confirmed'),
+
+(1, 4, 7, 4,
+ 2000.00, 'cancelled');
+-- =====================================================
+-- 9. USEFUL SQL QUERIES
+-- Run these after the creation script
+-- =====================================================
+
+-- Display all tables
+SHOW TABLES;
+
+-- Display all users
+SELECT user_id, name, email, role, created_at
+FROM users;
+
+-- Display all events
+SELECT * FROM events;
+
+-- Display all tickets
+SELECT * FROM tickets;
+
+-- Display all bookings
+SELECT * FROM bookings;
+
+-- Find upcoming events
+SELECT *
+FROM events
+WHERE event_date >= CURDATE()
+ORDER BY event_date ASC;
+
+-- Find events by category
+SELECT *
+FROM events
+WHERE category = 'Music';
+
+-- Display tickets with event names
+SELECT
+    e.title,
+    t.ticket_type,
+    t.price,
+    t.available_quantity
+FROM events e
+INNER JOIN tickets t
+    ON e.event_id = t.event_id
+ORDER BY e.event_id, t.price;
+
+-- Display complete booking details
+SELECT
+    b.booking_id,
+    u.name AS customer_name,
+    e.title AS event_name,
+    t.ticket_type,
+    t.price,
+    b.quantity,
+    b.total_amount,
+    b.booking_status,
+    b.booking_date
+FROM bookings b
+INNER JOIN users u
+    ON b.user_id = u.user_id
+INNER JOIN events e
+    ON b.event_id = e.event_id
+INNER JOIN tickets t
+    ON b.event_id = t.event_id
+   AND b.ticket_id = t.ticket_id
+ORDER BY b.booking_date DESC;
+
+-- Count bookings for each event
+SELECT
+    e.title,
+    COUNT(b.booking_id) AS total_bookings
+FROM events e
+LEFT JOIN bookings b
+    ON e.event_id = b.event_id
+GROUP BY e.event_id, e.title;
+
+-- Calculate confirmed booking revenue by event
+SELECT
+    e.title,
+    COALESCE(SUM(
+        CASE
+            WHEN b.booking_status = 'confirmed'
+            THEN b.total_amount
+            ELSE 0
+        END
+    ), 0) AS total_revenue
+FROM events e
+LEFT JOIN bookings b
+    ON e.event_id = b.event_id
+GROUP BY e.event_id, e.title;
+
+-- Find events with tickets still available
+SELECT
+    e.title,
+    t.ticket_type,
+    t.available_quantity
+FROM events e
+INNER JOIN tickets t
+    ON e.event_id = t.event_id
+WHERE t.available_quantity > 0;
+
+-- Find users who have made bookings
+SELECT DISTINCT
+    u.user_id,
+    u.name,
+    u.email
+FROM users u
+INNER JOIN bookings b
+    ON u.user_id = b.user_id;
+
+-- Count bookings by status
+SELECT booking_status, COUNT(*) AS total
+FROM bookings
+GROUP BY booking_status;
+
+-- Find events with no bookings
+SELECT e.event_id, e.title
+FROM events e
+LEFT JOIN bookings b
+    ON e.event_id = b.event_id
+WHERE b.booking_id IS NULL;
+
+-- =====================================================
+-- 10. VERIFY DATABASE
+-- =====================================================
+
+SELECT COUNT(*) AS total_users FROM users;
+SELECT COUNT(*) AS total_events FROM events;
+SELECT COUNT(*) AS total_ticket_types FROM tickets;
+SELECT COUNT(*) AS total_bookings FROM bookings;
